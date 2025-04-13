@@ -4,10 +4,11 @@ import Navbar from '@/components/Navbar';
 import DailyPlanner from '@/components/DailyPlanner';
 import HabitTracker from '@/components/HabitTracker';
 import WorkoutTracker from '@/components/WorkoutTracker';
+import Scheduler from '@/components/Scheduler';
 import AnalyticsSummary from '@/components/AnalyticsSummary';
 import { AppProvider } from '@/context/AppContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle2, Calendar, Dumbbell, BarChart3 } from 'lucide-react';
+import { CheckCircle2, Calendar, Dumbbell, BarChart3, Clock } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -31,6 +32,7 @@ const Index = () => {
               <HabitTracker />
             </div>
             <div className="space-y-6">
+              <Scheduler />
               <WorkoutTracker />
             </div>
           </div>
@@ -38,7 +40,7 @@ const Index = () => {
           {/* Mobile view: Tabs layout */}
           <div className="md:hidden">
             <Tabs defaultValue="tasks">
-              <TabsList className="grid grid-cols-4 mb-4">
+              <TabsList className="grid grid-cols-5 mb-4">
                 <TabsTrigger value="tasks" className="flex items-center gap-1">
                   <CheckCircle2 className="h-4 w-4" />
                   <span className="hidden sm:inline">Tasks</span>
@@ -46,6 +48,10 @@ const Index = () => {
                 <TabsTrigger value="habits" className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   <span className="hidden sm:inline">Habits</span>
+                </TabsTrigger>
+                <TabsTrigger value="schedule" className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span className="hidden sm:inline">Schedule</span>
                 </TabsTrigger>
                 <TabsTrigger value="workouts" className="flex items-center gap-1">
                   <Dumbbell className="h-4 w-4" />
@@ -61,6 +67,9 @@ const Index = () => {
               </TabsContent>
               <TabsContent value="habits">
                 <HabitTracker />
+              </TabsContent>
+              <TabsContent value="schedule">
+                <Scheduler />
               </TabsContent>
               <TabsContent value="workouts">
                 <WorkoutTracker />

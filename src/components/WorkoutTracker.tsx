@@ -8,7 +8,9 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
-  Edit
+  Edit,
+  FileDown,
+  BarChart2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -28,6 +30,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { toast } from '@/hooks/use-toast';
 
 const WorkoutTracker = () => {
   const { workouts, addWorkout, updateWorkout, deleteWorkout } = useAppContext();
@@ -112,10 +115,68 @@ const WorkoutTracker = () => {
     });
   };
 
+  // Export workout data as CSV
+  const exportWorkoutData = (workout: Workout) => {
+    const headers = ['Exercise', 'Sets', 'Reps', 'Weight'];
+    const csvContent = [
+      headers.join(','),
+      ...workout.exercises.map(exercise => 
+        `${exercise.name},${exercise.sets},${exercise.reps},${exercise.weight}`
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${workout.name.replace(/\s+/g, '-')}_${formatDate(workout.date).replace(/,\s+/g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Workout Exported",
+      description: `${workout.name} data has been downloaded as CSV`,
+    });
+  };
+
   // Sort workouts by date (newest first)
   const sortedWorkouts = [...workouts].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+
+  // Generate a simple progress graph (for demonstration)
+  const renderProgressGraph = (workout: Workout) => {
+    const maxWeight = Math.max(...workout.exercises.map(ex => ex.weight));
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">Progress Overview</span>
+          <BarChart2 size={16} className="text-primary" />
+        </div>
+        <div className="space-y-1">
+          {workout.exercises.map(ex => {
+            const percentage = Math.round((ex.weight / (maxWeight || 1)) * 100);
+            return (
+              <div key={ex.id} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span>{ex.name}</span>
+                  <span>{ex.weight}kg</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary rounded-full h-2" 
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card className="w-full">
@@ -305,6 +366,17 @@ const WorkoutTracker = () => {
                         className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
+                          exportWorkoutData(workout);
+                        }}
+                      >
+                        <FileDown size={16} className="text-primary" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           deleteWorkout(workout.id);
                         }}
                       >
@@ -341,6 +413,7 @@ const WorkoutTracker = () => {
                           </div>
                         ))}
                       </div>
+                      {renderProgressGraph(workout)}
                     </div>
                   </AccordionContent>
                 </AccordionItem>

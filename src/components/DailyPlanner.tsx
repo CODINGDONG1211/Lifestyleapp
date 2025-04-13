@@ -7,11 +7,13 @@ import {
   Circle, 
   Edit, 
   Trash2,
-  Flag
+  Flag,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   Select,
   SelectContent,
@@ -19,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from 'date-fns';
 
 const DailyPlanner = () => {
   const { tasks, addTask, updateTask, deleteTask } = useAppContext();
@@ -26,10 +34,16 @@ const DailyPlanner = () => {
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isCalendarView, setIsCalendarView] = useState(false);
 
-  const todayTasks = tasks.filter(task => 
-    new Date(task.date).toDateString() === new Date().toDateString()
-  );
+  const filteredTasks = isCalendarView 
+    ? tasks.filter(task => 
+        new Date(task.date).toDateString() === selectedDate.toDateString()
+      )
+    : tasks.filter(task => 
+        new Date(task.date).toDateString() === new Date().toDateString()
+      );
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +52,7 @@ const DailyPlanner = () => {
         title: newTaskTitle,
         completed: false,
         priority: newTaskPriority,
-        date: new Date().toISOString(),
+        date: isCalendarView ? selectedDate.toISOString() : new Date().toISOString(),
       });
       setNewTaskTitle('');
       setNewTaskPriority('medium');
@@ -65,6 +79,12 @@ const DailyPlanner = () => {
     updateTask(taskId, { priority });
   };
 
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -78,12 +98,59 @@ const DailyPlanner = () => {
     }
   };
 
+  // Count tasks per day for calendar highlighting
+  const getDayTaskCount = (date: Date) => {
+    const formattedDate = date.toDateString();
+    return tasks.filter(task => new Date(task.date).toDateString() === formattedDate).length;
+  };
+
   return (
     <Card className="w-full">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl font-semibold flex items-center">
           Daily Tasks
+          {isCalendarView && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              {format(selectedDate, 'MMMM d, yyyy')}
+            </span>
+          )}
         </CardTitle>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-8 px-2 flex items-center gap-1"
+              >
+                <CalendarIcon size={16} />
+                <span className="hidden sm:inline">Calendar</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateChange}
+                modifiers={{
+                  hasTasks: (date) => getDayTaskCount(date) > 0
+                }}
+                modifiersStyles={{
+                  hasTasks: { backgroundColor: 'rgba(14, 165, 233, 0.1)', fontWeight: 'bold' }
+                }}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <Button 
+            size="sm" 
+            variant={isCalendarView ? "default" : "outline"}
+            onClick={() => setIsCalendarView(!isCalendarView)}
+            className="h-8"
+          >
+            {isCalendarView ? "Today's Tasks" : "Calendar View"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleAddTask} className="flex gap-2 mb-4">
@@ -113,12 +180,12 @@ const DailyPlanner = () => {
         </form>
 
         <div className="space-y-2">
-          {todayTasks.length === 0 ? (
+          {filteredTasks.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
-              No tasks for today. Add some tasks to get started.
+              No tasks {isCalendarView ? 'for this day' : 'for today'}. Add some tasks to get started.
             </div>
           ) : (
-            todayTasks.map((task) => (
+            filteredTasks.map((task) => (
               <div 
                 key={task.id}
                 className={`flex items-center justify-between p-3 rounded-md 
