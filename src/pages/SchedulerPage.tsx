@@ -9,7 +9,9 @@ const SchedulerPage = () => {
     <AppProvider>
       <div className="min-h-screen bg-background">
         <Navbar />
-        <Scheduler isWidget={false} />
+        <div className="max-w-full">
+          <Scheduler isWidget={false} />
+        </div>
       </div>
     </AppProvider>
   );
