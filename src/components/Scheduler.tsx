@@ -203,12 +203,23 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             : newEvent.endTime
         });
       } else {
-        const newEndTime = setMinutes(setHours(newEvent.date, hours), minutes);
-        if (newEndTime > newEvent.date) {
-          setNewEvent({
-            ...newEvent,
-            endTime: newEndTime
-          });
+        if (!newEvent.endTime) {
+          const newEndTime = setMinutes(setHours(newEvent.date, hours), minutes);
+          if (newEndTime > newEvent.date) {
+            setNewEvent({
+              ...newEvent,
+              endTime: newEndTime
+            });
+          }
+        } else {
+          const sameDay = new Date(newEvent.date);
+          const newEndTime = setMinutes(setHours(sameDay, hours), minutes);
+          if (newEndTime > newEvent.date) {
+            setNewEvent({
+              ...newEvent,
+              endTime: newEndTime
+            });
+          }
         }
       }
     } catch (error) {
@@ -329,27 +340,34 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                   className="h-14 border-b relative hover:bg-blue-50 cursor-pointer"
                   onClick={() => handleTimeSlotClick(hour)}
                 >
-                  {eventsForHour.map(event => (
-                    <div 
-                      key={event.id} 
-                      className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm`}
-                      style={{ 
-                        top: '2px', 
-                        height: 'calc(100% - 4px)',
-                        zIndex: 10 
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      {event.title}
-                      {event.endTime && (
-                        <span className="text-xs block opacity-80">
-                          {format(event.date, 'h:mm a')} - {format(event.endTime, 'h:mm a')}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {eventsForHour.map(event => {
+                    const eventDuration = event.endTime 
+                      ? (event.endTime.getTime() - event.date.getTime()) / (1000 * 60 * 60) 
+                      : 1; // Default to 1 hour if no end time
+                    
+                    return (
+                      <div 
+                        key={event.id} 
+                        className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm`}
+                        style={{ 
+                          top: '2px', 
+                          height: `calc(${eventDuration * 100}% - 4px)`,
+                          maxHeight: `calc(${eventDuration * 14}px * ${eventDuration})`,
+                          zIndex: 10 
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        {event.title}
+                        {event.endTime && (
+                          <span className="text-xs block opacity-80">
+                            {format(event.date, 'h:mm a')} - {format(event.endTime, 'h:mm a')}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -403,25 +421,46 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
           <div className="flex-1 grid grid-cols-7">
             {days.map((day, dayIdx) => (
               <div key={dayIdx} className="border-r relative">
-                {HOURS.map((hour) => (
-                  <div key={hour} className="h-14 border-b relative">
-                    {events
-                      .filter(event => 
-                        isSameDay(event.date, day) && 
-                        getHours(event.date) === hour
-                      )
-                      .map(event => (
-                        <div 
-                          key={event.id} 
-                          className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-xs`}
-                          style={{ top: '2px', height: 'calc(100% - 4px)' }}
-                        >
-                          {event.title}
-                        </div>
-                      ))
-                    }
-                  </div>
-                ))}
+                {HOURS.map((hour) => {
+                  const eventsForHour = events.filter(event => 
+                    isSameDay(event.date, day) && 
+                    getHours(event.date) === hour
+                  );
+                  
+                  return (
+                    <div 
+                      key={hour} 
+                      className="h-14 border-b relative hover:bg-blue-50 cursor-pointer"
+                      onClick={() => handleTimeSlotClick(hour, day)}
+                    >
+                      {eventsForHour.map(event => {
+                        const eventDuration = event.endTime 
+                          ? (event.endTime.getTime() - event.date.getTime()) / (1000 * 60 * 60) 
+                          : 1; // Default to 1 hour if no end time
+                          
+                        return (
+                          <div 
+                            key={event.id} 
+                            className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-xs`}
+                            style={{ 
+                              top: '2px', 
+                              height: `calc(${eventDuration * 100}% - 4px)`,
+                              maxHeight: `calc(${eventDuration * 14}px * ${eventDuration})`,
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {event.title}
+                            {event.endTime && (
+                              <span className="text-xs block opacity-80">
+                                {format(event.date, 'h:mm')} - {format(event.endTime, 'h:mm')}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
                 {isSameDay(day, new Date()) && (
                   <div 
                     className="absolute left-0 right-0 border-t-2 border-red-500 z-10"
