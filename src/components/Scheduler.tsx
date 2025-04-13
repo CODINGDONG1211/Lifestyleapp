@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar as CalendarIcon, Plus, External } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Event = {
@@ -148,7 +148,7 @@ const Scheduler = () => {
                   onClick={handleGoogleCalendarExport}
                   className="flex items-center gap-1"
                 >
-                  <External size={14} />
+                  <ExternalLink size={14} />
                   Add to Google Calendar
                 </Button>
               )}
