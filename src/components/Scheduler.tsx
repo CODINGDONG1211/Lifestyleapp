@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -10,7 +9,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,11 +25,16 @@ import {
   MoreVertical,
   ExternalLink,
   Menu as MenuIcon,
+  MapPin,
+  Users,
+  BookOpen,
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, addMonths, subMonths, getHours, addHours } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, addMonths, subMonths, getHours, addHours, setHours, setMinutes, startOfHour, addMinutes, parse } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator } from "@/components/ui/menubar";
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
 
 export type Event = {
   id: string;
@@ -37,6 +42,7 @@ export type Event = {
   date: Date;
   description: string;
   color?: string; // Optional color for events
+  endTime?: Date; // Optional end time for events
 };
 
 type SchedulerProps = {
@@ -52,7 +58,8 @@ const DEFAULT_EVENTS: Event[] = [
     title: 'Vaisakhi',
     date: new Date(2025, 3, 13, 12),
     description: 'Vaisakhi celebration',
-    color: 'bg-green-600'
+    color: 'bg-green-600',
+    endTime: new Date(2025, 3, 13, 14)
   },
   {
     id: '2',
@@ -95,6 +102,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'day' | 'week' | 'month'>(isWidget ? 'month' : 'month');
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
+  const [selectedRange, setSelectedRange] = useState<{start: Date, end: Date} | null>(null);
 
   const handleAddEvent = () => {
     if (newEvent.title.trim() === '') return;
@@ -102,7 +110,8 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     const event: Event = {
       ...newEvent,
       id: Date.now().toString(),
-      color: 'bg-green-600' // Default color for new events
+      color: 'bg-green-600',
+      endTime: newEvent.endTime || addHours(newEvent.date, 1)
     };
     
     setEvents([...events, event]);
@@ -112,6 +121,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
       description: '',
     });
     setIsDialogOpen(false);
+    setSelectedRange(null);
   };
 
   const getEventsForDate = (date: Date) => {
@@ -122,7 +132,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
 
   const selectedDayEvents = selected ? getEventsForDate(selected) : [];
   
-  // Navigation handlers
   const handlePrevious = () => {
     if (currentView === 'day') {
       setCurrentViewDate(prev => addDays(prev, -1));
@@ -147,7 +156,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     setCurrentViewDate(new Date());
   };
 
-  // Format the current date range for display
   const getHeaderDate = () => {
     if (currentView === 'day') {
       return format(currentViewDate, 'MMMM d, yyyy');
@@ -160,16 +168,61 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     }
   };
 
-  // Render different calendar views
+  const handleTimeSlotClick = (hour: number, day: Date = currentViewDate) => {
+    const startTime = setHours(day, hour);
+    const endTime = addHours(startTime, 1);
+    
+    setSelectedRange({
+      start: startTime,
+      end: endTime
+    });
+    
+    setNewEvent({
+      title: '',
+      date: startTime,
+      description: '',
+      endTime: endTime
+    });
+    
+    setIsDialogOpen(true);
+  };
+
+  const handleTimeChange = (type: 'start' | 'end', timeString: string) => {
+    if (!timeString) return;
+    
+    try {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      
+      if (type === 'start') {
+        const newDate = setMinutes(setHours(newEvent.date, hours), minutes);
+        setNewEvent({
+          ...newEvent,
+          date: newDate,
+          endTime: newEvent.endTime && newEvent.endTime <= newDate 
+            ? addMinutes(newDate, 15) 
+            : newEvent.endTime
+        });
+      } else {
+        const newEndTime = setMinutes(setHours(newEvent.date, hours), minutes);
+        if (newEndTime > newEvent.date) {
+          setNewEvent({
+            ...newEvent,
+            endTime: newEndTime
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Invalid time format', error);
+    }
+  };
+
   const renderMonthGridView = () => {
-    // Get all days in the current month
     const date = currentViewDate;
     const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(new Date(date.getFullYear(), date.getMonth() + 1, 0));
     const days = eachDayOfInterval({ start: startDate, end: endDate });
     
-    // Group days by week
     const weeks = [];
     let week = [];
     
@@ -183,7 +236,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     
     return (
       <div className="grid-cols-1">
-        {/* Day headers */}
         <div className="grid grid-cols-7 border-b">
           {DAYS_OF_WEEK.map((day, index) => (
             <div key={index} className="py-2 text-center text-sm font-medium text-muted-foreground">
@@ -192,7 +244,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
           ))}
         </div>
         
-        {/* Calendar grid */}
         <div className="grid grid-cols-7 h-[calc(100vh-220px)]">
           {days.map((day, i) => {
             const dayEvents = getEventsForDate(day);
@@ -266,26 +317,43 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             ))}
           </div>
           <div className="flex-1 relative">
-            {HOURS.map((hour) => (
-              <div key={hour} className="h-14 border-b relative">
-                {events
-                  .filter(event => 
-                    isSameDay(event.date, currentViewDate) && 
-                    getHours(event.date) === hour
-                  )
-                  .map(event => (
+            {HOURS.map((hour) => {
+              const eventsForHour = events.filter(event => 
+                isSameDay(event.date, currentViewDate) && 
+                getHours(event.date) === hour
+              );
+              
+              return (
+                <div 
+                  key={hour} 
+                  className="h-14 border-b relative hover:bg-blue-50 cursor-pointer"
+                  onClick={() => handleTimeSlotClick(hour)}
+                >
+                  {eventsForHour.map(event => (
                     <div 
                       key={event.id} 
                       className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm`}
-                      style={{ top: '2px', height: 'calc(100% - 4px)' }}
+                      style={{ 
+                        top: '2px', 
+                        height: 'calc(100% - 4px)',
+                        zIndex: 10 
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
                     >
                       {event.title}
+                      {event.endTime && (
+                        <span className="text-xs block opacity-80">
+                          {format(event.date, 'h:mm a')} - {format(event.endTime, 'h:mm a')}
+                        </span>
+                      )}
                     </div>
-                  ))
-                }
-              </div>
-            ))}
-            {/* Current time indicator - red line */}
+                  ))}
+                </div>
+              );
+            })}
+            
             {isSameDay(currentViewDate, new Date()) && (
               <div 
                 className="absolute left-0 right-0 border-t-2 border-red-500 z-10"
@@ -354,7 +422,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                     }
                   </div>
                 ))}
-                {/* Current time indicator */}
                 {isSameDay(day, new Date()) && (
                   <div 
                     className="absolute left-0 right-0 border-t-2 border-red-500 z-10"
@@ -373,7 +440,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     );
   };
 
-  // Widget version (compact)
   if (isWidget) {
     return (
       <Card className="w-full">
@@ -474,10 +540,8 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     );
   }
 
-  // Full page version with Google Calendar style layout
   return (
     <div className="h-screen flex flex-col bg-white">
-      {/* Top bar */}
       <div className="flex items-center border-b p-2 bg-white">
         <Button variant="ghost" size="icon" className="mr-2">
           <MenuIcon size={20} />
@@ -549,9 +613,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
         </div>
       </div>
       
-      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar */}
         <div className="w-60 border-r p-4 overflow-y-auto">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -559,36 +621,65 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 <Plus size={20} className="mr-2" /> Create
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Add New Event</DialogTitle>
+                <DialogDescription>
+                  Create a new event on your calendar.
+                </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="event-title">Event Title</Label>
                   <Input
                     id="event-title"
                     value={newEvent.title}
                     onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    placeholder="Enter event title"
+                    placeholder="Add title"
+                    className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Event Date</Label>
-                  <Calendar
-                    mode="single"
-                    selected={newEvent.date}
-                    onSelect={(date) => date && setNewEvent({ ...newEvent, date })}
-                    className="rounded-md border"
-                  />
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex flex-1 items-center gap-2">
+                    <div>
+                      {selectedRange ? format(selectedRange.start, 'EEEE, MMMM d') : format(newEvent.date, 'EEEE, MMMM d')}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="time"
+                        value={format(newEvent.date, 'HH:mm')}
+                        onChange={(e) => handleTimeChange('start', e.target.value)}
+                        className="w-24"
+                      />
+                      <span>-</span>
+                      <Input 
+                        type="time"
+                        value={newEvent.endTime ? format(newEvent.endTime, 'HH:mm') : format(addHours(newEvent.date, 1), 'HH:mm')}
+                        onChange={(e) => handleTimeChange('end', e.target.value)}
+                        className="w-24"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="event-description">Description</Label>
-                  <Input
-                    id="event-description"
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <Input placeholder="Add location" className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm" />
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <Input placeholder="Add guests" className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm" />
+                </div>
+                
+                <div className="flex items-start gap-2 text-sm">
+                  <BookOpen className="h-5 w-5 text-muted-foreground mt-1" />
+                  <Textarea 
+                    placeholder="Add description"
                     value={newEvent.description}
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    placeholder="Enter event description"
+                    className="min-h-[80px] border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
                 </div>
               </div>
@@ -596,12 +687,11 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddEvent}>Add Event</Button>
+                <Button onClick={handleAddEvent}>Save</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           
-          {/* Mini calendar */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="font-medium">{format(currentViewDate, 'MMMM yyyy')}</span>
@@ -691,7 +781,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
           </div>
         </div>
         
-        {/* Calendar content */}
         <div className="flex-1 overflow-auto">
           {currentView === 'month' && renderMonthGridView()}
           {currentView === 'week' && renderWeekView()}
