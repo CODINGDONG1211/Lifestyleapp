@@ -1,11 +1,8 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  CalendarDays, 
   BarChart3, 
   CheckSquare,
-  Clock,
   Dumbbell,
   Menu,
   X
@@ -38,35 +35,21 @@ const Navbar = () => {
               Dashboard
             </Link>
             <Link 
-              to="/planner" 
+              to="/" 
               className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
             >
               <CheckSquare className="mr-1 h-4 w-4" />
               Tasks
             </Link>
             <Link 
-              to="/habits" 
-              className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
-            >
-              <CalendarDays className="mr-1 h-4 w-4" />
-              Habits
-            </Link>
-            <Link 
-              to="/scheduler" 
-              className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
-            >
-              <Clock className="mr-1 h-4 w-4" />
-              Scheduler
-            </Link>
-            <Link 
-              to="/workouts" 
+              to="/" 
               className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
             >
               <Dumbbell className="mr-1 h-4 w-4" />
               Workouts
             </Link>
             <Link 
-              to="/analytics" 
+              to="/" 
               className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
             >
               <BarChart3 className="mr-1 h-4 w-4" />
@@ -100,7 +83,7 @@ const Navbar = () => {
               Dashboard
             </Link>
             <Link 
-              to="/planner" 
+              to="/" 
               className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
               onClick={() => setIsOpen(false)}
             >
@@ -108,23 +91,7 @@ const Navbar = () => {
               Tasks
             </Link>
             <Link 
-              to="/habits" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
-              onClick={() => setIsOpen(false)}
-            >
-              <CalendarDays className="mr-2 h-5 w-5" />
-              Habits
-            </Link>
-            <Link 
-              to="/scheduler" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
-              onClick={() => setIsOpen(false)}
-            >
-              <Clock className="mr-2 h-5 w-5" />
-              Scheduler
-            </Link>
-            <Link 
-              to="/workouts" 
+              to="/" 
               className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
               onClick={() => setIsOpen(false)}
             >
@@ -132,7 +99,7 @@ const Navbar = () => {
               Workouts
             </Link>
             <Link 
-              to="/analytics" 
+              to="/" 
               className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted hover:text-primary flex items-center"
               onClick={() => setIsOpen(false)}
             >

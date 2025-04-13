@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useAppContext, Workout, Exercise } from '@/context/AppContext';
+import { exercises } from '@/data/exercises';
 import { 
   Plus, 
   Trash2, 
@@ -24,6 +24,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import {
   Accordion,
   AccordionContent,
@@ -31,6 +32,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from '@/hooks/use-toast';
+
+// Convert exercises data to combobox options format
+const exerciseOptions = exercises.map(exercise => ({
+  value: exercise.name,
+  label: exercise.name,
+  category: exercise.category + (exercise.subcategory ? ` - ${exercise.subcategory}` : '')
+}));
 
 const WorkoutTracker = () => {
   const { workouts, addWorkout, updateWorkout, deleteWorkout } = useAppContext();
@@ -244,52 +252,46 @@ const WorkoutTracker = () => {
                       <Label htmlFor={`exercise-name-${index}`} className="text-xs">
                         Name
                       </Label>
-                      <Input
-                        id={`exercise-name-${index}`}
+                      <Combobox
+                        options={exerciseOptions}
                         value={exercise.name}
-                        onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
-                        placeholder="e.g., Bench Press"
-                        className="h-8"
+                        onSelect={(value) => handleExerciseChange(index, 'name', value)}
+                        placeholder="Search exercises..."
                       />
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="grid gap-1">
-                        <Label htmlFor={`exercise-sets-${index}`} className="text-xs">
-                          Sets
-                        </Label>
+                      <div>
+                        <Label htmlFor={`exercise-sets-${index}`} className="text-xs">Sets</Label>
                         <Input
                           id={`exercise-sets-${index}`}
                           type="number"
                           min="1"
                           value={exercise.sets}
                           onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
-                          className="h-8"
+                          className="mt-1"
                         />
                       </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor={`exercise-reps-${index}`} className="text-xs">
-                          Reps
-                        </Label>
+                      <div>
+                        <Label htmlFor={`exercise-reps-${index}`} className="text-xs">Reps</Label>
                         <Input
                           id={`exercise-reps-${index}`}
                           type="number"
                           min="1"
                           value={exercise.reps}
                           onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
-                          className="h-8"
+                          className="mt-1"
                         />
                       </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor={`exercise-weight-${index}`} className="text-xs">
-                          Weight
-                        </Label>
+                      <div>
+                        <Label htmlFor={`exercise-weight-${index}`} className="text-xs">Weight (kg)</Label>
                         <Input
                           id={`exercise-weight-${index}`}
                           type="number"
                           min="0"
+                          step="0.5"
                           value={exercise.weight}
                           onChange={(e) => handleExerciseChange(index, 'weight', e.target.value)}
-                          className="h-8"
+                          className="mt-1"
                         />
                       </div>
                     </div>

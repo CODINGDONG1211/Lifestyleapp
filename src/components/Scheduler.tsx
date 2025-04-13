@@ -29,7 +29,7 @@ import {
   Users,
   BookOpen,
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, addMonths, subMonths, getHours, addHours, setHours, setMinutes, startOfHour, addMinutes, parse } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, addMonths, subMonths, getHours, addHours, setHours, setMinutes, startOfHour, addMinutes, parse, getMinutes } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator } from "@/components/ui/menubar";
 import { Separator } from '@/components/ui/separator';
@@ -52,48 +52,9 @@ type SchedulerProps = {
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-const DEFAULT_EVENTS: Event[] = [
-  {
-    id: '1',
-    title: 'Vaisakhi',
-    date: new Date(2025, 3, 13, 12),
-    description: 'Vaisakhi celebration',
-    color: 'bg-green-600',
-    endTime: new Date(2025, 3, 13, 14)
-  },
-  {
-    id: '2',
-    title: 'Ambedkar Jayanti',
-    date: new Date(2025, 3, 14, 12),
-    description: 'Ambedkar Jayanti celebration',
-    color: 'bg-green-600'
-  },
-  {
-    id: '3',
-    title: 'Mesadi',
-    date: new Date(2025, 3, 14, 14),
-    description: 'Mesadi celebration',
-    color: 'bg-green-600'
-  },
-  {
-    id: '4',
-    title: 'Bahag Bihu/Vaisakhadi',
-    date: new Date(2025, 3, 15, 12),
-    description: 'Bahag Bihu/Vaisakhadi celebration',
-    color: 'bg-green-600'
-  },
-  {
-    id: '5',
-    title: 'Good Friday',
-    date: new Date(2025, 3, 18, 12),
-    description: 'Good Friday observance',
-    color: 'bg-green-600'
-  },
-];
-
 const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   const [selected, setSelected] = useState<Date | undefined>(new Date());
-  const [events, setEvents] = useState<Event[]>(DEFAULT_EVENTS);
+  const [events, setEvents] = useState<Event[]>([]);
   const [newEvent, setNewEvent] = useState<Omit<Event, 'id'>>({
     title: '',
     date: new Date(),
@@ -103,6 +64,10 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   const [currentView, setCurrentView] = useState<'day' | 'week' | 'month'>(isWidget ? 'month' : 'month');
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
   const [selectedRange, setSelectedRange] = useState<{start: Date, end: Date} | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ hour: number, minutes: number } | null>(null);
+  const [dragEnd, setDragEnd] = useState<{ hour: number, minutes: number } | null>(null);
+  const [draggingEvent, setDraggingEvent] = useState<Event | null>(null);
 
   const handleAddEvent = () => {
     if (newEvent.title.trim() === '') return;
@@ -303,7 +268,78 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     );
   };
 
+  const getTimeFromMousePosition = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const totalMinutes = (relativeY / rect.height) * 24 * 60;
+    const hour = Math.floor(totalMinutes / 60);
+    // Calculate minutes and round to nearest 30
+    const minutesPart = totalMinutes % 60;
+    const minutes = Math.round(minutesPart / 30) * 30;
+    
+    // Handle case where minutes round up to 60
+    if (minutes === 60) {
+      return { 
+        hour: Math.min(23, hour + 1), 
+        minutes: 0 
+      };
+    }
+    
+    return { 
+      hour: Math.min(23, Math.max(0, hour)), 
+      minutes 
+    };
+  };
+
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    const time = getTimeFromMousePosition(e);
+    setIsDragging(true);
+    setDragStart(time);
+    setDragEnd(time);
+  };
+
+  const handleDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging && !draggingEvent) {
+      const time = getTimeFromMousePosition(e);
+      setDragEnd(time);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (isDragging && dragStart && dragEnd && !draggingEvent) {
+      // Ensure end time is after start time
+      let startDate = setMinutes(setHours(currentViewDate, dragStart.hour), dragStart.minutes);
+      let endDate = setMinutes(setHours(currentViewDate, dragEnd.hour), dragEnd.minutes);
+      
+      // Swap dates if dragged upwards
+      if (endDate < startDate) {
+        [startDate, endDate] = [endDate, startDate];
+      }
+      
+      setNewEvent({
+        title: '',
+        date: startDate,
+        description: '',
+        endTime: endDate
+      });
+      
+      setIsDialogOpen(true);
+    }
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+    setDraggingEvent(null);
+  };
+
+  const handleEventDragStart = (e: React.MouseEvent, event: Event) => {
+    e.stopPropagation();
+    setDraggingEvent(event);
+    setIsDragging(true);
+  };
+
   const renderDayView = () => {
+    const hours = Array.from({ length: 24 * 2 }, (_, i) => i / 2); // 30-minute intervals
+
     return (
       <div className="flex flex-col h-[calc(100vh-180px)] overflow-y-auto">
         <div className="flex">
@@ -320,61 +356,77 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
           </div>
         </div>
         <div className="flex flex-1">
-          <div className="w-16 border-r">
+          <div className="w-16 border-r relative">
             {HOURS.map((hour) => (
-              <div key={hour} className="h-14 text-right pr-2 text-sm text-muted-foreground border-b">
-                {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+              <div key={hour} className="h-14 relative">
+                <div className="absolute -top-[10px] right-2 text-sm text-muted-foreground">
+                  {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+                </div>
               </div>
             ))}
           </div>
-          <div className="flex-1 relative">
-            {HOURS.map((hour) => {
-              const eventsForHour = events.filter(event => 
-                isSameDay(event.date, currentViewDate) && 
-                getHours(event.date) === hour
-              );
+          
+          <div 
+            className="flex-1 relative"
+            onMouseDown={handleDragStart}
+            onMouseMove={handleDragMove}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+          >
+            <div className="absolute top-0 left-0 w-[1px] h-full bg-gray-200"></div>
+            {hours.map((hour, index) => (
+              <div 
+                key={index}
+                className={`h-7 ${
+                  index % 2 === 0 
+                    ? 'border-b border-gray-200' 
+                    : 'border-b border-gray-100'
+                }`}
+              />
+            ))}
+
+            {isDragging && dragStart && dragEnd && !draggingEvent && (
+              <div 
+                className="absolute left-[1px] right-0 bg-blue-100 opacity-50"
+                style={{
+                  top: `${(dragStart.hour * 60 + dragStart.minutes) / (24 * 60) * 100}%`,
+                  height: `${((dragEnd.hour * 60 + dragEnd.minutes) - (dragStart.hour * 60 + dragStart.minutes)) / (24 * 60) * 100}%`
+                }}
+              />
+            )}
+
+            {events.filter(event => isSameDay(event.date, currentViewDate)).map(event => {
+              const startMinutes = getHours(event.date) * 60 + getMinutes(event.date);
+              const endMinutes = event.endTime 
+                ? getHours(event.endTime) * 60 + getMinutes(event.endTime)
+                : startMinutes + 60;
               
               return (
                 <div 
-                  key={hour} 
-                  className="h-14 border-b relative hover:bg-blue-50 cursor-pointer"
-                  onClick={() => handleTimeSlotClick(hour)}
+                  key={event.id}
+                  className={`absolute left-[1px] right-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm cursor-move`}
+                  style={{
+                    top: `${startMinutes / (24 * 60) * 100}%`,
+                    height: `${(endMinutes - startMinutes) / (24 * 60) * 100}%`,
+                    zIndex: draggingEvent?.id === event.id ? 20 : 10
+                  }}
+                  onMouseDown={(e) => handleEventDragStart(e, event)}
                 >
-                  {eventsForHour.map(event => {
-                    const eventDuration = event.endTime 
-                      ? (event.endTime.getTime() - event.date.getTime()) / (1000 * 60 * 60) 
-                      : 1; // Default to 1 hour if no end time
-                    
-                    return (
-                      <div 
-                        key={event.id} 
-                        className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm`}
-                        style={{ 
-                          top: '2px', 
-                          height: `calc(${eventDuration * 100}% - 4px)`,
-                          maxHeight: `calc(${eventDuration * 14}px * ${eventDuration})`,
-                          zIndex: 10 
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        {event.title}
-                        {event.endTime && (
-                          <span className="text-xs block opacity-80">
-                            {format(event.date, 'h:mm a')} - {format(event.endTime, 'h:mm a')}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                  <div className="font-semibold">{event.title}</div>
+                  <div className="text-xs opacity-90">
+                    {format(event.date, 'h:mm a')} 
+                    {event.endTime && ` - ${format(event.endTime, 'h:mm a')}`}
+                  </div>
+                  {event.description && (
+                    <div className="text-xs mt-1 opacity-75">{event.description}</div>
+                  )}
                 </div>
               );
             })}
-            
+
             {isSameDay(currentViewDate, new Date()) && (
               <div 
-                className="absolute left-0 right-0 border-t-2 border-red-500 z-10"
+                className="absolute left-0 right-0 border-t-2 border-red-500 z-30"
                 style={{ 
                   top: `${(new Date().getHours() * 60 + new Date().getMinutes()) / (24 * 60) * 100}%` 
                 }}
@@ -392,6 +444,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     const startDate = startOfWeek(currentViewDate);
     const endDate = endOfWeek(currentViewDate);
     const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const hours = Array.from({ length: 24 * 2 }, (_, i) => i / 2); // 30-minute intervals
     
     return (
       <div className="flex flex-col h-[calc(100vh-180px)] overflow-y-auto">
@@ -411,59 +464,82 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
           ))}
         </div>
         <div className="flex flex-1">
-          <div className="w-16 border-r">
+          <div className="w-16 border-r relative">
             {HOURS.map((hour) => (
-              <div key={hour} className="h-14 text-right pr-2 text-sm text-muted-foreground border-b">
-                {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+              <div key={hour} className="h-14 relative">
+                <div className="absolute -top-[10px] right-2 text-sm text-muted-foreground">
+                  {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+                </div>
               </div>
             ))}
           </div>
           <div className="flex-1 grid grid-cols-7">
             {days.map((day, dayIdx) => (
-              <div key={dayIdx} className="border-r relative">
-                {HOURS.map((hour) => {
-                  const eventsForHour = events.filter(event => 
-                    isSameDay(event.date, day) && 
-                    getHours(event.date) === hour
-                  );
+              <div 
+                key={dayIdx} 
+                className="border-r relative"
+                onMouseDown={(e) => {
+                  setCurrentViewDate(day);
+                  handleDragStart(e);
+                }}
+                onMouseMove={handleDragMove}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+              >
+                <div className="absolute top-0 left-0 w-[1px] h-full bg-gray-200"></div>
+                {hours.map((hour, index) => (
+                  <div 
+                    key={index}
+                    className={`h-7 ${
+                      index % 2 === 0 
+                        ? 'border-b border-gray-200' 
+                        : 'border-b border-gray-100'
+                    }`}
+                  />
+                ))}
+
+                {isDragging && dragStart && dragEnd && !draggingEvent && isSameDay(currentViewDate, day) && (
+                  <div 
+                    className="absolute left-[1px] right-0 bg-blue-100 opacity-50"
+                    style={{
+                      top: `${(dragStart.hour * 60 + dragStart.minutes) / (24 * 60) * 100}%`,
+                      height: `${((dragEnd.hour * 60 + dragEnd.minutes) - (dragStart.hour * 60 + dragStart.minutes)) / (24 * 60) * 100}%`
+                    }}
+                  />
+                )}
+
+                {events.filter(event => isSameDay(event.date, day)).map(event => {
+                  const startMinutes = getHours(event.date) * 60 + getMinutes(event.date);
+                  const endMinutes = event.endTime 
+                    ? getHours(event.endTime) * 60 + getMinutes(event.endTime)
+                    : startMinutes + 60;
                   
                   return (
                     <div 
-                      key={hour} 
-                      className="h-14 border-b relative hover:bg-blue-50 cursor-pointer"
-                      onClick={() => handleTimeSlotClick(hour, day)}
+                      key={event.id}
+                      className={`absolute left-[1px] right-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm cursor-move`}
+                      style={{
+                        top: `${startMinutes / (24 * 60) * 100}%`,
+                        height: `${(endMinutes - startMinutes) / (24 * 60) * 100}%`,
+                        zIndex: draggingEvent?.id === event.id ? 20 : 10
+                      }}
+                      onMouseDown={(e) => handleEventDragStart(e, event)}
                     >
-                      {eventsForHour.map(event => {
-                        const eventDuration = event.endTime 
-                          ? (event.endTime.getTime() - event.date.getTime()) / (1000 * 60 * 60) 
-                          : 1; // Default to 1 hour if no end time
-                          
-                        return (
-                          <div 
-                            key={event.id} 
-                            className={`absolute left-0 right-0 mx-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-xs`}
-                            style={{ 
-                              top: '2px', 
-                              height: `calc(${eventDuration * 100}% - 4px)`,
-                              maxHeight: `calc(${eventDuration * 14}px * ${eventDuration})`,
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {event.title}
-                            {event.endTime && (
-                              <span className="text-xs block opacity-80">
-                                {format(event.date, 'h:mm')} - {format(event.endTime, 'h:mm')}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
+                      <div className="font-semibold">{event.title}</div>
+                      <div className="text-xs opacity-90">
+                        {format(event.date, 'h:mm a')} 
+                        {event.endTime && ` - ${format(event.endTime, 'h:mm a')}`}
+                      </div>
+                      {event.description && (
+                        <div className="text-xs mt-1 opacity-75">{event.description}</div>
+                      )}
                     </div>
                   );
                 })}
+
                 {isSameDay(day, new Date()) && (
                   <div 
-                    className="absolute left-0 right-0 border-t-2 border-red-500 z-10"
+                    className="absolute left-0 right-0 border-t-2 border-red-500 z-30"
                     style={{ 
                       top: `${(new Date().getHours() * 60 + new Date().getMinutes()) / (24 * 60) * 100}%` 
                     }}
@@ -494,34 +570,63 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Event</DialogTitle>
+                <DialogTitle>Add Event</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="event-title">Event Title</Label>
-                  <Input
-                    id="event-title"
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    placeholder="Enter event title"
+              <div className="space-y-4 py-4">
+                <Input
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  placeholder="Add title"
+                  className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
+                />
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex flex-1 items-center gap-2">
+                    <div>
+                      {format(newEvent.date, 'EEEE, MMMM d')}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="time"
+                        value={format(newEvent.date, 'HH:mm')}
+                        onChange={(e) => handleTimeChange('start', e.target.value)}
+                        className="w-24"
+                      />
+                      <span>-</span>
+                      <Input 
+                        type="time"
+                        value={newEvent.endTime ? format(newEvent.endTime, 'HH:mm') : format(addHours(newEvent.date, 1), 'HH:mm')}
+                        onChange={(e) => handleTimeChange('end', e.target.value)}
+                        className="w-24"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    placeholder="Add location"
+                    className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Event Date</Label>
-                  <Calendar
-                    mode="single"
-                    selected={newEvent.date}
-                    onSelect={(date) => date && setNewEvent({ ...newEvent, date })}
-                    className="rounded-md border"
+
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    placeholder="Add guests"
+                    className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="event-description">Description</Label>
-                  <Input
-                    id="event-description"
+
+                <div className="flex gap-2 text-sm">
+                  <BookOpen className="h-5 w-5 text-muted-foreground mt-1" />
+                  <Textarea 
+                    placeholder="Add description"
                     value={newEvent.description}
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    placeholder="Enter event description"
+                    className="min-h-[80px] border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
                 </div>
               </div>
@@ -529,7 +634,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddEvent}>Add Event</Button>
+                <Button onClick={handleAddEvent}>Save</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -662,27 +767,21 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Add New Event</DialogTitle>
-                <DialogDescription>
-                  Create a new event on your calendar.
-                </DialogDescription>
+                <DialogTitle>Add Event</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Input
-                    id="event-title"
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    placeholder="Add title"
-                    className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
-                  />
-                </div>
+              <div className="space-y-4 py-4">
+                <Input
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  placeholder="Add title"
+                  className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
+                />
                 
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-5 w-5 text-muted-foreground" />
                   <div className="flex flex-1 items-center gap-2">
                     <div>
-                      {selectedRange ? format(selectedRange.start, 'EEEE, MMMM d') : format(newEvent.date, 'EEEE, MMMM d')}
+                      {format(newEvent.date, 'EEEE, MMMM d')}
                     </div>
                     <div className="flex items-center gap-2">
                       <Input 
@@ -701,18 +800,24 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
-                  <Input placeholder="Add location" className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm" />
+                  <Input 
+                    placeholder="Add location"
+                    className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
+                  />
                 </div>
-                
+
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="h-5 w-5 text-muted-foreground" />
-                  <Input placeholder="Add guests" className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm" />
+                  <Input 
+                    placeholder="Add guests"
+                    className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
+                  />
                 </div>
-                
-                <div className="flex items-start gap-2 text-sm">
+
+                <div className="flex gap-2 text-sm">
                   <BookOpen className="h-5 w-5 text-muted-foreground mt-1" />
                   <Textarea 
                     placeholder="Add description"
@@ -772,52 +877,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             </div>
           </div>
           
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">My calendars</h3>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <ChevronRight className="h-4 w-4 rotate-90" />
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-sm bg-primary mr-2"></div>
-                <span>Personal</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-sm bg-green-600 mr-2"></div>
-                <span>Holidays</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-sm bg-yellow-500 mr-2"></div>
-                <span>Birthdays</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-sm bg-blue-500 mr-2"></div>
-                <span>Tasks</span>
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Other calendars</h3>
-              <div className="flex">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Plus size={16} />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <ChevronRight className="h-4 w-4 rotate-90" />
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded-sm bg-purple-500 mr-2"></div>
-                <span>Holidays in India</span>
-              </div>
-            </div>
-          </div>
         </div>
         
         <div className="flex-1 overflow-auto">
