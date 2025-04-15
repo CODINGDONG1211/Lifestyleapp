@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 
 // Define types for our state
@@ -35,11 +34,21 @@ export type Workout = {
   completed: boolean;
 };
 
+export type Event = {
+  id: string;
+  title: string;
+  date: Date;
+  description: string;
+  color?: string;
+  endTime?: Date;
+};
+
 // Create context types
 type AppContextType = {
   tasks: Task[];
   habits: Habit[];
   workouts: Workout[];
+  events: Event[];
   addTask: (task: Omit<Task, 'id'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
@@ -49,6 +58,7 @@ type AppContextType = {
   addWorkout: (workout: Omit<Workout, 'id'>) => void;
   updateWorkout: (id: string, updates: Partial<Workout>) => void;
   deleteWorkout: (id: string) => void;
+  setEvents: (events: Event[]) => void;
 };
 
 // Create context with default values
@@ -146,6 +156,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tasks, setTasks] = useState<Task[]>(sampleTasks);
   const [habits, setHabits] = useState<Habit[]>(sampleHabits);
   const [workouts, setWorkouts] = useState<Workout[]>(sampleWorkouts);
+  const [events, setEvents] = useState<Event[]>([]);
 
   // Task functions
   const addTask = (task: Omit<Task, 'id'>) => {
@@ -195,6 +206,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tasks,
         habits,
         workouts,
+        events,
         addTask,
         updateTask,
         deleteTask,
@@ -204,6 +216,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addWorkout,
         updateWorkout,
         deleteWorkout,
+        setEvents,
       }}
     >
       {children}

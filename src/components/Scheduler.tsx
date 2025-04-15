@@ -53,8 +53,8 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 const Scheduler = ({ isWidget = true }: SchedulerProps) => {
+  const { events, setEvents } = useAppContext();
   const [selected, setSelected] = useState<Date | undefined>(new Date());
-  const [events, setEvents] = useState<Event[]>([]);
   const [newEvent, setNewEvent] = useState<Omit<Event, 'id'>>({
     title: '',
     date: new Date(),
@@ -687,10 +687,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   return (
     <div className="h-screen flex flex-col bg-white">
       <div className="flex items-center border-b p-2 bg-white">
-        <Button variant="ghost" size="icon" className="mr-2">
-          <MenuIcon size={20} />
-        </Button>
-        
         <div className="flex items-center mr-6">
           <CalendarIcon className="h-6 w-6 mr-2 text-blue-500" />
           <h1 className="text-xl font-semibold">Calendar</h1>
@@ -745,15 +741,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
               </MenubarContent>
             </MenubarMenu>
           </Menubar>
-          
-          <div className="flex items-center gap-2 ml-4">
-            <Button variant="ghost" size="icon">
-              <Search size={20} />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Settings size={20} />
-            </Button>
-          </div>
         </div>
       </div>
       
@@ -866,17 +853,6 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
               month={currentViewDate}
             />
           </div>
-          
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search for people"
-                className="pl-8 bg-muted/50 border-0"
-              />
-            </div>
-          </div>
-          
         </div>
         
         <div className="flex-1 overflow-auto">
