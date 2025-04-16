@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 
 // Define types for our state
 export type Task = {
@@ -46,57 +46,63 @@ export type Event = {
   endTime?: Date;
 };
 
-// Create context types
+// Type for event data stored in Firestore
+type StoredEvent = Omit<Event, 'date' | 'endTime'> & {
+  date: string;
+  endTime?: string;
+};
+
+// Update context type to include loading state
 type AppContextType = {
   tasks: Task[];
   habits: Habit[];
   workouts: Workout[];
   events: Event[];
-  addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (id: string, task: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  addHabit: (habit: Omit<Habit, 'id'>) => void;
-  updateHabit: (id: string, habit: Partial<Habit>) => void;
-  deleteHabit: (id: string) => void;
-  addWorkout: (workout: Omit<Workout, 'id'>) => void;
-  updateWorkout: (id: string, workout: Partial<Workout>) => void;
-  deleteWorkout: (id: string) => void;
-  addEvent: (event: Omit<Event, 'id'>) => void;
-  updateEvent: (id: string, event: Partial<Event>) => void;
-  deleteEvent: (id: string) => void;
+  loading: boolean;
+  addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+  updateTask: (id: string, task: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  addHabit: (habit: Omit<Habit, 'id'>) => Promise<void>;
+  updateHabit: (id: string, habit: Partial<Habit>) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
+  addWorkout: (workout: Omit<Workout, 'id'>) => Promise<void>;
+  updateWorkout: (id: string, workout: Partial<Workout>) => Promise<void>;
+  deleteWorkout: (id: string) => Promise<void>;
+  addEvent: (event: Omit<Event, 'id'>) => Promise<void>;
+  updateEvent: (id: string, event: Partial<Event>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
 };
 
-// Create context with default values
 const AppContext = createContext<AppContextType | null>(null);
 
-// Provider component
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // Load user data from Firestore
+  // Set up real-time listener for user data
   useEffect(() => {
-    const loadUserData = async () => {
-      if (!user) return;
+    let unsubscribe: (() => void) | undefined;
+
+    const setupUserDataListener = async () => {
+      if (!user) {
+        setTasks([]);
+        setHabits([]);
+        setWorkouts([]);
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
 
       try {
         const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setTasks(data.tasks || []);
-          setHabits(data.habits || []);
-          setWorkouts(data.workouts || []);
-          setEvents(data.events?.map((event: any) => ({
-            ...event,
-            date: new Date(event.date),
-            endTime: event.endTime ? new Date(event.endTime) : undefined
-          })) || []);
-        } else {
+        
+        // First, get the initial data
+        const initialDoc = await getDoc(userDocRef);
+        if (!initialDoc.exists()) {
           // Initialize the document if it doesn't exist
           await setDoc(userDocRef, {
             tasks: [],
@@ -105,97 +111,165 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             events: [],
             updatedAt: new Date().toISOString()
           });
+        } else {
+          // Set initial data
+          const data = initialDoc.data();
+          setTasks(data.tasks || []);
+          setHabits(data.habits || []);
+          setWorkouts(data.workouts || []);
+          setEvents(data.events?.map((event: any) => ({
+            ...event,
+            date: new Date(event.date),
+            endTime: event.endTime ? new Date(event.endTime) : undefined
+          })) || []);
         }
+
+        // Set up real-time listener for updates
+        unsubscribe = onSnapshot(userDocRef, (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            if (data.tasks) setTasks(data.tasks);
+            if (data.habits) setHabits(data.habits);
+            if (data.workouts) setWorkouts(data.workouts);
+            if (data.events) {
+              setEvents(data.events.map((event: any) => ({
+                ...event,
+                date: new Date(event.date),
+                endTime: event.endTime ? new Date(event.endTime) : undefined
+              })));
+            }
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error('Error in snapshot listener:', error);
+          setLoading(false);
+        });
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('Error setting up user data listener:', error);
+        setLoading(false);
       }
     };
 
-    loadUserData();
+    setupUserDataListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user]);
 
-  // Save data to Firestore whenever it changes
-  useEffect(() => {
-    const saveUserData = async () => {
-      if (!user) return;
+  // Helper function to save data
+  const saveUserData = async (data: Partial<{
+    tasks: Task[],
+    habits: Habit[],
+    workouts: Workout[],
+    events: StoredEvent[]
+  }>) => {
+    if (!user) return;
 
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        await setDoc(userDocRef, {
-          tasks,
-          habits,
-          workouts,
-          events: events.map(event => ({
-            ...event,
-            date: event.date.toISOString(),
-            endTime: event.endTime?.toISOString()
-          })),
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-      } catch (error) {
-        console.error('Error saving user data:', error);
-      }
-    };
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, {
+        ...data,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error saving user data:', error);
+      throw error;
+    }
+  };
 
-    const debounceTimeout = setTimeout(() => {
-      if (user) {
-        saveUserData();
-      }
-    }, 1000); // Debounce saves to avoid too many writes
-
-    return () => clearTimeout(debounceTimeout);
-  }, [user, tasks, habits, workouts, events]);
-
-  const addTask = (task: Omit<Task, 'id'>) => {
+  // Update all operations to be async and directly save to Firestore
+  const addTask = async (task: Omit<Task, 'id'>) => {
     const newTask = { ...task, id: crypto.randomUUID() };
-    setTasks(prev => [...prev, newTask]);
+    const updatedTasks = [...tasks, newTask];
+    await saveUserData({ tasks: updatedTasks });
+    setTasks(updatedTasks); // Update local state immediately
   };
 
-  const updateTask = (id: string, task: Partial<Task>) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...task } : t));
+  const updateTask = async (id: string, task: Partial<Task>) => {
+    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...task } : t);
+    await saveUserData({ tasks: updatedTasks });
+    setTasks(updatedTasks); // Update local state immediately
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+  const deleteTask = async (id: string) => {
+    const updatedTasks = tasks.filter(t => t.id !== id);
+    await saveUserData({ tasks: updatedTasks });
+    setTasks(updatedTasks); // Update local state immediately
   };
 
-  const addHabit = (habit: Omit<Habit, 'id'>) => {
+  const addHabit = async (habit: Omit<Habit, 'id'>) => {
     const newHabit = { ...habit, id: crypto.randomUUID() };
-    setHabits(prev => [...prev, newHabit]);
+    const updatedHabits = [...habits, newHabit];
+    await saveUserData({ habits: updatedHabits });
+    setHabits(updatedHabits); // Update local state immediately
   };
 
-  const updateHabit = (id: string, habit: Partial<Habit>) => {
-    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...habit } : h));
+  const updateHabit = async (id: string, habit: Partial<Habit>) => {
+    const updatedHabits = habits.map(h => h.id === id ? { ...h, ...habit } : h);
+    await saveUserData({ habits: updatedHabits });
+    setHabits(updatedHabits); // Update local state immediately
   };
 
-  const deleteHabit = (id: string) => {
-    setHabits(prev => prev.filter(h => h.id !== id));
+  const deleteHabit = async (id: string) => {
+    const updatedHabits = habits.filter(h => h.id !== id);
+    await saveUserData({ habits: updatedHabits });
+    setHabits(updatedHabits); // Update local state immediately
   };
 
-  const addWorkout = (workout: Omit<Workout, 'id'>) => {
+  const addWorkout = async (workout: Omit<Workout, 'id'>) => {
     const newWorkout = { ...workout, id: crypto.randomUUID() };
-    setWorkouts(prev => [...prev, newWorkout]);
+    const updatedWorkouts = [...workouts, newWorkout];
+    await saveUserData({ workouts: updatedWorkouts });
+    setWorkouts(updatedWorkouts); // Update local state immediately
   };
 
-  const updateWorkout = (id: string, workout: Partial<Workout>) => {
-    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, ...workout } : w));
+  const updateWorkout = async (id: string, workout: Partial<Workout>) => {
+    const updatedWorkouts = workouts.map(w => w.id === id ? { ...w, ...workout } : w);
+    await saveUserData({ workouts: updatedWorkouts });
+    setWorkouts(updatedWorkouts); // Update local state immediately
   };
 
-  const deleteWorkout = (id: string) => {
-    setWorkouts(prev => prev.filter(w => w.id !== id));
+  const deleteWorkout = async (id: string) => {
+    const updatedWorkouts = workouts.filter(w => w.id !== id);
+    await saveUserData({ workouts: updatedWorkouts });
+    setWorkouts(updatedWorkouts); // Update local state immediately
   };
 
-  const addEvent = (event: Omit<Event, 'id'>) => {
+  const addEvent = async (event: Omit<Event, 'id'>) => {
     const newEvent = { ...event, id: crypto.randomUUID() };
-    setEvents(prev => [...prev, newEvent]);
+    const updatedEvents = [...events, newEvent];
+    const eventsToSave: StoredEvent[] = updatedEvents.map(e => ({
+      ...e,
+      date: e.date.toISOString(),
+      endTime: e.endTime?.toISOString()
+    }));
+    await saveUserData({ events: eventsToSave });
+    setEvents(updatedEvents); // Update local state immediately
   };
 
-  const updateEvent = (id: string, event: Partial<Event>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...event } : e));
+  const updateEvent = async (id: string, event: Partial<Event>) => {
+    const updatedEvents = events.map(e => e.id === id ? { ...e, ...event } : e);
+    const eventsToSave: StoredEvent[] = updatedEvents.map(e => ({
+      ...e,
+      date: e.date.toISOString(),
+      endTime: e.endTime?.toISOString()
+    }));
+    await saveUserData({ events: eventsToSave });
+    setEvents(updatedEvents); // Update local state immediately
   };
 
-  const deleteEvent = (id: string) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
+  const deleteEvent = async (id: string) => {
+    const updatedEvents = events.filter(e => e.id !== id);
+    const eventsToSave: StoredEvent[] = updatedEvents.map(e => ({
+      ...e,
+      date: e.date.toISOString(),
+      endTime: e.endTime?.toISOString()
+    }));
+    await saveUserData({ events: eventsToSave });
+    setEvents(updatedEvents); // Update local state immediately
   };
 
   const value = {
@@ -203,6 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     habits,
     workouts,
     events,
+    loading,
     addTask,
     updateTask,
     deleteTask,
@@ -224,7 +299,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-// Custom hook for using the context
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (!context) {
