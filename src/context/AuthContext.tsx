@@ -30,34 +30,43 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Ensure user document exists when auth state changes
         try {
           const userDocRef = doc(db, 'users', user.uid);
           await setDoc(userDocRef, {
             email: user.email,
             updatedAt: new Date().toISOString()
           }, { merge: true });
+          setUser(user);
         } catch (error) {
           console.error('Error updating user document:', error);
+          setUser(null);
         }
+      } else {
+        setUser(null);
       }
-      setUser(user);
+      
+      if (initializing) {
+        setInitializing(false);
+      }
       setLoading(false);
     });
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      unsubscribe();
+    };
+  }, [initializing]);
 
   const signup = async (email: string, password: string, name: string) => {
     try {
+      setLoading(true);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Initialize user data in Firestore with all required collections
       await setDoc(doc(db, 'users', user.uid), {
         name,
         email,
@@ -71,12 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error during signup:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
       await signInWithEmailAndPassword(auth, email, password);
+      // User state will be updated by the onAuthStateChanged listener
     } catch (error) {
       console.error('Error during login:', error);
       throw error;
@@ -85,7 +98,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      setLoading(true);
       await signOut(auth);
+      // User state will be updated by the onAuthStateChanged listener
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;
@@ -102,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!initializing && children}
     </AuthContext.Provider>
   );
 }; 

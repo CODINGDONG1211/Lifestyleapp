@@ -359,7 +359,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             {HOURS.map((hour) => (
               <div key={hour} className="h-14 relative">
                 <div className="absolute -top-[10px] right-2 text-sm text-muted-foreground">
-                  {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+                {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
                 </div>
               </div>
             ))}
@@ -399,12 +399,12 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
               const endMinutes = event.endTime 
                 ? getHours(event.endTime) * 60 + getMinutes(event.endTime)
                 : startMinutes + 60;
-              
-              return (
-                <div 
-                  key={event.id}
+                    
+                    return (
+                      <div 
+                        key={event.id} 
                   className={`absolute left-[1px] right-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm cursor-move`}
-                  style={{
+                        style={{ 
                     top: `${startMinutes / (24 * 60) * 100}%`,
                     height: `${(endMinutes - startMinutes) / (24 * 60) * 100}%`,
                     zIndex: draggingEvent?.id === event.id ? 20 : 10
@@ -422,7 +422,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 </div>
               );
             })}
-
+            
             {isSameDay(currentViewDate, new Date()) && (
               <div 
                 className="absolute left-0 right-0 border-t-2 border-red-500 z-30"
@@ -467,7 +467,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             {HOURS.map((hour) => (
               <div key={hour} className="h-14 relative">
                 <div className="absolute -top-[10px] right-2 text-sm text-muted-foreground">
-                  {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+                {hour === 0 ? '' : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
                 </div>
               </div>
             ))}
@@ -512,12 +512,12 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                   const endMinutes = event.endTime 
                     ? getHours(event.endTime) * 60 + getMinutes(event.endTime)
                     : startMinutes + 60;
-                  
-                  return (
-                    <div 
-                      key={event.id}
+                          
+                        return (
+                          <div 
+                            key={event.id} 
                       className={`absolute left-[1px] right-1 ${event.color || 'bg-primary'} text-white p-1 rounded-sm overflow-hidden text-sm cursor-move`}
-                      style={{
+                            style={{ 
                         top: `${startMinutes / (24 * 60) * 100}%`,
                         height: `${(endMinutes - startMinutes) / (24 * 60) * 100}%`,
                         zIndex: draggingEvent?.id === event.id ? 20 : 10
@@ -531,10 +531,10 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                       </div>
                       {event.description && (
                         <div className="text-xs mt-1 opacity-75">{event.description}</div>
-                      )}
-                    </div>
-                  );
-                })}
+                            )}
+                          </div>
+                        );
+                      })}
 
                 {isSameDay(day, new Date()) && (
                   <div 
@@ -575,9 +575,9 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <Input
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  <Input
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="Add title"
                   className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
                 />
@@ -587,7 +587,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                   <div className="flex flex-1 items-center gap-2">
                     <div>
                       {format(newEvent.date, 'EEEE, MMMM d')}
-                    </div>
+                </div>
                     <div className="flex items-center gap-2">
                       <Input 
                         type="time"
@@ -601,14 +601,14 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                         value={newEvent.endTime ? format(newEvent.endTime, 'HH:mm') : format(addHours(newEvent.date, 1), 'HH:mm')}
                         onChange={(e) => handleTimeChange('end', e.target.value)}
                         className="w-24"
-                      />
-                    </div>
+                  />
+                </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
-                  <Input 
+                  <Input
                     placeholder="Add location"
                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
@@ -762,12 +762,12 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <Input
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  placeholder="Add title"
-                  className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
-                />
+                  <Input
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                    placeholder="Add title"
+                    className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
+                  />
                 
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-5 w-5 text-muted-foreground" />
@@ -792,7 +792,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                     </div>
                   </div>
                 </div>
-
+                
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
                   <Input 
@@ -800,7 +800,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
                 </div>
-
+                
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="h-5 w-5 text-muted-foreground" />
                   <Input 
@@ -808,7 +808,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
                   />
                 </div>
-
+                
                 <div className="flex gap-2 text-sm">
                   <BookOpen className="h-5 w-5 text-muted-foreground mt-1" />
                   <Textarea 
