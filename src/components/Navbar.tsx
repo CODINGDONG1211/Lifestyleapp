@@ -13,8 +13,8 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop menu */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
+          {/* Navigation menu - visible on all screens */}
+          <div className="flex items-center space-x-4">
             <Link 
               to="/" 
               className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-primary"
