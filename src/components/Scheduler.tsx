@@ -118,7 +118,9 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   };
 
   const handleToday = () => {
-    setCurrentViewDate(new Date());
+    const today = new Date();
+    setCurrentViewDate(today);
+    setSelected(today);
   };
 
   const getHeaderDate = () => {
@@ -804,7 +806,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSelected(new Date())}
+                  onClick={handleToday}
                 >
                   Today
                 </Button>
@@ -874,7 +876,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
               <div className="flex flex-1 items-center gap-2">
                 <div>
                   {format(newEvent.date, 'EEEE, MMMM d')}
-            </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <Input 
                     type="time"
