@@ -81,7 +81,7 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
     addEvent(event);
     setNewEvent({
       title: '',
-      date: new Date(),
+      date: selected || new Date(),
       description: '',
     });
     setIsDialogOpen(false);
@@ -687,183 +687,203 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white">
-      <div className="flex items-center border-b p-2 bg-white">
-        <div className="flex items-center mr-6">
-          <CalendarIcon className="h-6 w-6 mr-2 text-blue-500" />
-          <h1 className="text-xl font-semibold">Calendar</h1>
-        </div>
-        
+    <div className={`h-full flex flex-col ${!isWidget && 'p-6'}`}>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Scheduler</h2>
         <Button 
-          variant="outline" 
-          className="mr-2 rounded-full px-4" 
-          onClick={handleToday}
+          onClick={() => {
+            setNewEvent({
+              title: '',
+              date: selected || new Date(),
+              description: '',
+              endTime: addHours(selected || new Date(), 1)
+            });
+            setIsDialogOpen(true);
+          }}
         >
-          Today
+          <Plus className="w-4 h-4 mr-2" />
+          Add Event
         </Button>
-        
-        <Button variant="ghost" size="icon" onClick={handlePrevious}>
-          <ChevronLeft size={20} />
-        </Button>
-        
-        <Button variant="ghost" size="icon" onClick={handleNext}>
-          <ChevronRight size={20} />
-        </Button>
-        
-        <h2 className="text-xl font-medium ml-4">
-          {getHeaderDate()}
-        </h2>
-        
-        <div className="ml-auto flex items-center">
-          <Menubar className="border-none">
-            <MenubarMenu>
-              <MenubarTrigger className="cursor-pointer">
-                {currentView === 'month' ? 'Month' : currentView === 'week' ? 'Week' : 'Day'} 
-                <ChevronRight className="h-4 w-4 rotate-90 ml-1" />
-              </MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem 
-                  onClick={() => setCurrentView('day')}
-                  className={currentView === 'day' ? 'bg-muted' : ''}
-                >
-                  Day
-                </MenubarItem>
-                <MenubarItem 
-                  onClick={() => setCurrentView('week')}
-                  className={currentView === 'week' ? 'bg-muted' : ''}
-                >
-                  Week
-                </MenubarItem>
-                <MenubarItem 
-                  onClick={() => setCurrentView('month')}
-                  className={currentView === 'month' ? 'bg-muted' : ''}
-                >
-                  Month
-                </MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-          </Menubar>
-        </div>
       </div>
-      
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-60 border-r p-4 overflow-y-auto">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="mb-6 w-full shadow-sm flex items-center justify-center py-6">
-                <Plus size={20} className="mr-2" /> Create
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Add New Event</DialogTitle>
-                <DialogDescription>
-                  Create a new event by filling out the details below.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                  <Input
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    placeholder="Add title"
-                    className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
-                  />
-                
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex flex-1 items-center gap-2">
-                    <div>
-                      {format(newEvent.date, 'EEEE, MMMM d')}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        type="time"
-                        value={format(newEvent.date, 'HH:mm')}
-                        onChange={(e) => handleTimeChange('start', e.target.value)}
-                        className="w-24"
-                      />
-                      <span>-</span>
-                      <Input 
-                        type="time"
-                        value={newEvent.endTime ? format(newEvent.endTime, 'HH:mm') : format(addHours(newEvent.date, 1), 'HH:mm')}
-                        onChange={(e) => handleTimeChange('end', e.target.value)}
-                        className="w-24"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="h-5 w-5 text-muted-foreground" />
-                  <Input 
-                    placeholder="Add location"
-                    className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
-                  />
-                </div>
-                
-                <div className="flex items-center gap-2 text-sm">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <Input 
-                    placeholder="Add guests"
-                    className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
-                  />
-                </div>
-                
-                <div className="flex gap-2 text-sm">
-                  <BookOpen className="h-5 w-5 text-muted-foreground mt-1" />
-                  <Textarea 
-                    placeholder="Add description"
-                    value={newEvent.description}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    className="min-h-[80px] border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddEvent}>Save</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+
+      <div className="h-screen flex flex-col bg-white">
+        <div className="flex items-center border-b p-2 bg-white">
+          <div className="flex items-center mr-6">
+            <CalendarIcon className="h-6 w-6 mr-2 text-blue-500" />
+            <h1 className="text-xl font-semibold">Calendar</h1>
+          </div>
           
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium">{format(currentViewDate, 'MMMM yyyy')}</span>
-              <div className="flex">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentViewDate(prev => subMonths(prev, 1))}>
-                  <ChevronLeft size={16} />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentViewDate(prev => addMonths(prev, 1))}>
-                  <ChevronRight size={16} />
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-7 text-center mb-1">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                <div key={i} className="text-xs text-muted-foreground">
-                  {day}
-                </div>
-              ))}
-            </div>
-            <Calendar
-              mode="single"
-              selected={selected}
-              onSelect={(date) => {
-                setSelected(date);
-                if (date) setCurrentViewDate(date);
-              }}
-              className="w-full"
-              month={currentViewDate}
-            />
+          <Button 
+            variant="outline" 
+            className="mr-2 rounded-full px-4" 
+            onClick={handleToday}
+          >
+            Today
+          </Button>
+          
+          <Button variant="ghost" size="icon" onClick={handlePrevious}>
+            <ChevronLeft size={20} />
+          </Button>
+          
+          <Button variant="ghost" size="icon" onClick={handleNext}>
+            <ChevronRight size={20} />
+          </Button>
+          
+          <h2 className="text-xl font-medium ml-4">
+            {getHeaderDate()}
+          </h2>
+          
+          <div className="ml-auto flex items-center">
+            <Menubar className="border-none">
+              <MenubarMenu>
+                <MenubarTrigger className="cursor-pointer">
+                  {currentView === 'month' ? 'Month' : currentView === 'week' ? 'Week' : 'Day'} 
+                  <ChevronRight className="h-4 w-4 rotate-90 ml-1" />
+                </MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem 
+                    onClick={() => setCurrentView('day')}
+                    className={currentView === 'day' ? 'bg-muted' : ''}
+                  >
+                    Day
+                  </MenubarItem>
+                  <MenubarItem 
+                    onClick={() => setCurrentView('week')}
+                    className={currentView === 'week' ? 'bg-muted' : ''}
+                  >
+                    Week
+                  </MenubarItem>
+                  <MenubarItem 
+                    onClick={() => setCurrentView('month')}
+                    className={currentView === 'month' ? 'bg-muted' : ''}
+                  >
+                    Month
+                  </MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+            </Menubar>
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto">
-          {currentView === 'month' && renderMonthGridView()}
-          {currentView === 'week' && renderWeekView()}
-          {currentView === 'day' && renderDayView()}
+        <div className="flex flex-1 overflow-hidden">
+          <div className="w-60 border-r p-4 overflow-y-auto">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="mb-6 w-full shadow-sm flex items-center justify-center py-6">
+                  <Plus size={20} className="mr-2" /> Create
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Event</DialogTitle>
+                  <DialogDescription>
+                    Create a new event by filling out the details below.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <Input
+                      value={newEvent.title}
+                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                      placeholder="Add title"
+                      className="text-lg font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 px-0 focus-visible:border-primary"
+                    />
+                  
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex flex-1 items-center gap-2">
+                      <div>
+                        {format(newEvent.date, 'EEEE, MMMM d')}
+                    </div>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="time"
+                          value={format(newEvent.date, 'HH:mm')}
+                          onChange={(e) => handleTimeChange('start', e.target.value)}
+                          className="w-24"
+                        />
+                        <span>-</span>
+                        <Input 
+                          type="time"
+                          value={newEvent.endTime ? format(newEvent.endTime, 'HH:mm') : format(addHours(newEvent.date, 1), 'HH:mm')}
+                          onChange={(e) => handleTimeChange('end', e.target.value)}
+                          className="w-24"
+                    />
+                  </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="h-5 w-5 text-muted-foreground" />
+                    <Input 
+                      placeholder="Add location"
+                      className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <Input 
+                      placeholder="Add guests"
+                      className="border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 text-sm">
+                    <BookOpen className="h-5 w-5 text-muted-foreground mt-1" />
+                    <Textarea 
+                      placeholder="Add description"
+                      value={newEvent.description}
+                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                      className="min-h-[80px] border-0 border-b rounded-none focus-visible:ring-0 px-0 text-sm"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddEvent}>Save</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-medium">{format(currentViewDate, 'MMMM yyyy')}</span>
+                <div className="flex">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentViewDate(prev => subMonths(prev, 1))}>
+                    <ChevronLeft size={16} />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentViewDate(prev => addMonths(prev, 1))}>
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 text-center mb-1">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                  <div key={i} className="text-xs text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <Calendar
+                mode="single"
+                selected={selected}
+                onSelect={(date) => {
+                  setSelected(date);
+                  if (date) setCurrentViewDate(date);
+                }}
+                className="w-full"
+                month={currentViewDate}
+              />
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-auto">
+            {currentView === 'month' && renderMonthGridView()}
+            {currentView === 'week' && renderWeekView()}
+            {currentView === 'day' && renderDayView()}
+          </div>
         </div>
       </div>
     </div>
