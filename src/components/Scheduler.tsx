@@ -53,7 +53,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 const Scheduler = ({ isWidget = true }: SchedulerProps) => {
-  const { events, setEvents } = useAppContext();
+  const { events, addEvent } = useAppContext();
   const [selected, setSelected] = useState<Date | undefined>(new Date());
   const [newEvent, setNewEvent] = useState<Omit<Event, 'id'>>({
     title: '',
@@ -72,14 +72,13 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
   const handleAddEvent = () => {
     if (newEvent.title.trim() === '') return;
     
-    const event: Event = {
+    const event: Omit<Event, 'id'> = {
       ...newEvent,
-      id: Date.now().toString(),
       color: 'bg-green-600',
       endTime: newEvent.endTime || addHours(newEvent.date, 1)
     };
     
-    setEvents([...events, event]);
+    addEvent(event);
     setNewEvent({
       title: '',
       date: new Date(),
@@ -570,7 +569,10 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Event</DialogTitle>
+                <DialogTitle>Add New Event</DialogTitle>
+                <DialogDescription>
+                  Create a new event by filling out the details below.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <Input
@@ -754,7 +756,10 @@ const Scheduler = ({ isWidget = true }: SchedulerProps) => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Add Event</DialogTitle>
+                <DialogTitle>Add New Event</DialogTitle>
+                <DialogDescription>
+                  Create a new event by filling out the details below.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <Input

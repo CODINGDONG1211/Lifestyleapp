@@ -1,4 +1,7 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { useAuth } from './AuthContext';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 // Define types for our state
 export type Task = {
@@ -50,175 +53,172 @@ type AppContextType = {
   workouts: Workout[];
   events: Event[];
   addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
+  updateTask: (id: string, task: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   addHabit: (habit: Omit<Habit, 'id'>) => void;
-  updateHabit: (id: string, updates: Partial<Habit>) => void;
+  updateHabit: (id: string, habit: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
   addWorkout: (workout: Omit<Workout, 'id'>) => void;
-  updateWorkout: (id: string, updates: Partial<Workout>) => void;
+  updateWorkout: (id: string, workout: Partial<Workout>) => void;
   deleteWorkout: (id: string) => void;
-  setEvents: (events: Event[]) => void;
+  addEvent: (event: Omit<Event, 'id'>) => void;
+  updateEvent: (id: string, event: Partial<Event>) => void;
+  deleteEvent: (id: string) => void;
 };
 
 // Create context with default values
-const AppContext = createContext<AppContextType | undefined>(undefined);
-
-// Sample data
-const sampleTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Complete Project Proposal',
-    completed: false,
-    priority: 'high',
-    date: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Go Grocery Shopping',
-    completed: true,
-    priority: 'medium',
-    date: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Schedule Dentist Appointment',
-    completed: false,
-    priority: 'low',
-    date: new Date().toISOString(),
-  },
-];
-
-const sampleHabits: Habit[] = [
-  {
-    id: '1',
-    name: 'Drink Water',
-    streak: 5,
-    target: 8,
-    completedDays: [
-      new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 4).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0],
-    ],
-    color: '#3B82F6',
-  },
-  {
-    id: '2',
-    name: 'Read',
-    streak: 3,
-    target: 30,
-    completedDays: [
-      new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
-    ],
-    color: '#10B981',
-  },
-  {
-    id: '3',
-    name: 'Meditate',
-    streak: 0,
-    target: 10,
-    completedDays: [],
-    color: '#EC4899',
-  },
-];
-
-const sampleWorkouts: Workout[] = [
-  {
-    id: '1',
-    date: new Date().toISOString(),
-    name: 'Upper Body',
-    exercises: [
-      { id: '1', name: 'Bench Press', sets: 3, reps: 10, weight: 135 },
-      { id: '2', name: 'Pull-ups', sets: 3, reps: 8, weight: 0 },
-      { id: '3', name: 'Shoulder Press', sets: 3, reps: 12, weight: 65 },
-    ],
-    completed: false,
-  },
-  {
-    id: '2',
-    date: new Date(Date.now() - 86400000 * 2).toISOString(),
-    name: 'Lower Body',
-    exercises: [
-      { id: '1', name: 'Squats', sets: 4, reps: 10, weight: 185 },
-      { id: '2', name: 'Deadlifts', sets: 3, reps: 8, weight: 225 },
-      { id: '3', name: 'Leg Press', sets: 3, reps: 12, weight: 270 },
-    ],
-    completed: true,
-  },
-];
+const AppContext = createContext<AppContextType | null>(null);
 
 // Provider component
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [tasks, setTasks] = useState<Task[]>(sampleTasks);
-  const [habits, setHabits] = useState<Habit[]>(sampleHabits);
-  const [workouts, setWorkouts] = useState<Workout[]>(sampleWorkouts);
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const { user } = useAuth();
 
-  // Task functions
+  // Load user data from Firestore
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user) return;
+
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setTasks(data.tasks || []);
+          setHabits(data.habits || []);
+          setWorkouts(data.workouts || []);
+          setEvents(data.events?.map((event: any) => ({
+            ...event,
+            date: new Date(event.date),
+            endTime: event.endTime ? new Date(event.endTime) : undefined
+          })) || []);
+        } else {
+          // Initialize the document if it doesn't exist
+          await setDoc(userDocRef, {
+            tasks: [],
+            habits: [],
+            workouts: [],
+            events: [],
+            updatedAt: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
+
+  // Save data to Firestore whenever it changes
+  useEffect(() => {
+    const saveUserData = async () => {
+      if (!user) return;
+
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, {
+          tasks,
+          habits,
+          workouts,
+          events: events.map(event => ({
+            ...event,
+            date: event.date.toISOString(),
+            endTime: event.endTime?.toISOString()
+          })),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (error) {
+        console.error('Error saving user data:', error);
+      }
+    };
+
+    const debounceTimeout = setTimeout(() => {
+      if (user) {
+        saveUserData();
+      }
+    }, 1000); // Debounce saves to avoid too many writes
+
+    return () => clearTimeout(debounceTimeout);
+  }, [user, tasks, habits, workouts, events]);
+
   const addTask = (task: Omit<Task, 'id'>) => {
-    const newTask = { ...task, id: Date.now().toString() };
-    setTasks([...tasks, newTask as Task]);
+    const newTask = { ...task, id: crypto.randomUUID() };
+    setTasks(prev => [...prev, newTask]);
   };
 
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(tasks.map(task => (task.id === id ? { ...task, ...updates } : task)));
+  const updateTask = (id: string, task: Partial<Task>) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...task } : t));
   };
 
   const deleteTask = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
+    setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  // Habit functions
   const addHabit = (habit: Omit<Habit, 'id'>) => {
-    const newHabit = { ...habit, id: Date.now().toString() };
-    setHabits([...habits, newHabit as Habit]);
+    const newHabit = { ...habit, id: crypto.randomUUID() };
+    setHabits(prev => [...prev, newHabit]);
   };
 
-  const updateHabit = (id: string, updates: Partial<Habit>) => {
-    setHabits(habits.map(habit => (habit.id === id ? { ...habit, ...updates } : habit)));
+  const updateHabit = (id: string, habit: Partial<Habit>) => {
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...habit } : h));
   };
 
   const deleteHabit = (id: string) => {
-    setHabits(habits.filter(habit => habit.id !== id));
+    setHabits(prev => prev.filter(h => h.id !== id));
   };
 
-  // Workout functions
   const addWorkout = (workout: Omit<Workout, 'id'>) => {
-    const newWorkout = { ...workout, id: Date.now().toString() };
-    setWorkouts([...workouts, newWorkout as Workout]);
+    const newWorkout = { ...workout, id: crypto.randomUUID() };
+    setWorkouts(prev => [...prev, newWorkout]);
   };
 
-  const updateWorkout = (id: string, updates: Partial<Workout>) => {
-    setWorkouts(workouts.map(workout => (workout.id === id ? { ...workout, ...updates } : workout)));
+  const updateWorkout = (id: string, workout: Partial<Workout>) => {
+    setWorkouts(prev => prev.map(w => w.id === id ? { ...w, ...workout } : w));
   };
 
   const deleteWorkout = (id: string) => {
-    setWorkouts(workouts.filter(workout => workout.id !== id));
+    setWorkouts(prev => prev.filter(w => w.id !== id));
+  };
+
+  const addEvent = (event: Omit<Event, 'id'>) => {
+    const newEvent = { ...event, id: crypto.randomUUID() };
+    setEvents(prev => [...prev, newEvent]);
+  };
+
+  const updateEvent = (id: string, event: Partial<Event>) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...event } : e));
+  };
+
+  const deleteEvent = (id: string) => {
+    setEvents(prev => prev.filter(e => e.id !== id));
+  };
+
+  const value = {
+    tasks,
+    habits,
+    workouts,
+    events,
+    addTask,
+    updateTask,
+    deleteTask,
+    addHabit,
+    updateHabit,
+    deleteHabit,
+    addWorkout,
+    updateWorkout,
+    deleteWorkout,
+    addEvent,
+    updateEvent,
+    deleteEvent,
   };
 
   return (
-    <AppContext.Provider
-      value={{
-        tasks,
-        habits,
-        workouts,
-        events,
-        addTask,
-        updateTask,
-        deleteTask,
-        addHabit,
-        updateHabit,
-        deleteHabit,
-        addWorkout,
-        updateWorkout,
-        deleteWorkout,
-        setEvents,
-      }}
-    >
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );
@@ -227,7 +227,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 // Custom hook for using the context
 export const useAppContext = () => {
   const context = useContext(AppContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAppContext must be used within an AppProvider');
   }
   return context;
