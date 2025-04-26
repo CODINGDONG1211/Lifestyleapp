@@ -1,73 +1,66 @@
-# Welcome to your Lovable project
+# LifeHub - Your Personal Life Management Platform
 
-## Project info
+![LifeHub Logo](public/favicon.svg)
 
-**URL**: https://lovable.dev/projects/d541d6db-ee00-4a69-89a9-8514e61ed545
+LifeHub is a comprehensive life management platform that helps you organize your schedule, track tasks, and manage your daily activities all in one place. With its intuitive interface and powerful features, LifeHub makes it easy to stay on top of your commitments and maintain a balanced lifestyle.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Smart Calendar**: 
+  - Interactive day, week, and month views
+  - Drag-and-drop event scheduling
+  - Customizable event colors and categories
+  - Quick event creation with location and guest support
 
-**Use Lovable**
+- **Dashboard**:
+  - At-a-glance view of your upcoming events
+  - Daily task overview
+  - Progress tracking
+  - Personalized insights
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d541d6db-ee00-4a69-89a9-8514e61ed545) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v16 or higher)
+- npm or yarn
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/lifehub.git
+cd lifehub
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-**Use GitHub Codespaces**
+4. Open your browser and navigate to `http://localhost:5173`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Tech Stack
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
 - Tailwind CSS
+- Vite
+- ShadcnUI
 
-## How can I deploy this project?
+## Contributing
 
-Simply open [Lovable](https://lovable.dev/projects/d541d6db-ee00-4a69-89a9-8514e61ed545) and click on Share -> Publish.
+We welcome contributions! Please feel free to submit a Pull Request.
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes it is!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
